@@ -1,0 +1,2 @@
+INCLUDE include
+LINUX LINK cholmod

@@ -1,0 +1,10 @@
+LIB lib
+INCLUDE include
+LINUX LINK :linux_libnfd.a
+WINDOWS LINK :windows_libnfd.a
+WINDOWS LINK comdlg32
+WINDOWS LINK ws2_32
+WINDOWS LINK ole32
+WINDOWS LINK uuid
+WINDOWS LINK shell32
+LINUX RAW $(pkg-config --cflags --libs gtk+-3.0)
