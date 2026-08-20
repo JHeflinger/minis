@@ -1,0 +1,2 @@
+WINDOWS LIB lib
+WINDOWS LINK :libz.a
