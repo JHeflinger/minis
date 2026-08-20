@@ -2,5 +2,5 @@ INCLUDE include
 LIB lib
 WINDOWS LINK :win_libassimp.a
 LINUX LINK :linux_libassimp.a
+LINUX LINK z
 LINK stdc++
-LINK z
