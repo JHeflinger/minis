@@ -1,7 +1,7 @@
 INCLUDE include
 LIB lib
+LINK stdc++
 WINDOWS LINK :win_libassimp.a
 LINUX LINK :linux_libassimp.a
 LINUX LINK z
-LINK stdc++
 WINDOWS MODULE zlib https://github.com/JHeflinger/minis.git winzlib
