@@ -7,5 +7,6 @@ WINDOWS LINK ole32
 WINDOWS LINK uuid
 WINDOWS LINK shell32
 WINDOWS LINK z
+WINDOWS LINK ucrt
 WINDOWS LINK :windows_libnfd.a
 LINUX RAW $(pkg-config --cflags --libs gtk+-3.0)
