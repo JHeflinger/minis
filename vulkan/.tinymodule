@@ -3,3 +3,4 @@ WINDOWS LIB windows/GLFW
 WINDOWS INCLUDE windows/vulkan/include
 WINDOWS INCLUDE windows/GLFW/include
 WINDOWS LINK vulkan-1
+LINUX LINK vulkan
