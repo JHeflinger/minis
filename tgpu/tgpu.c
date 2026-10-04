@@ -142,7 +142,7 @@ int tgpu_create(TGPU* g, int preferred, int want_atomic_float) {
     cpi.queueFamilyIndex = g->family;
     TGPU_ASSERT(vkCreateCommandPool(g->device, &cpi, NULL, &g->pool), "vkCreateCommandPool failed");
     VkCommandBufferAllocateInfo cbi = { 0 };
-    cbi.sTypee = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cbi.commandPool = g->pool;
     cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cbi.commandBufferCount = 1;
@@ -167,7 +167,8 @@ int tgpu_create(TGPU* g, int preferred, int want_atomic_float) {
     dpi.poolSizeCount = 1;
     dpi.pPoolSizes = &ps;
     TGPU_ASSERT(vkCreateDescriptorPool(g->device, &dpi, NULL, &g->desc_pool), "vkCreateDescriptorPool failed");
-    VkDescriptorSetAllocateInfo dai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    VkDescriptorSetAllocateInfo dai = { 0 };
+    dai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     dai.descriptorPool = g->desc_pool;
     dai.descriptorSetCount = 1;
     dai.pSetLayouts = &g->set_layout;
@@ -214,7 +215,8 @@ void tgpu_buffer_destroy(TGPU* g, TGPUBuffer* b) {
 
 void tgpu_bind(TGPU* g, uint32_t binding, const TGPUBuffer* b) {
     VkDescriptorBufferInfo info = { b->buffer, 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    VkWriteDescriptorSet w = { 0 };
+    w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     w.dstSet = g->set;
     w.dstBinding = binding;
     w.descriptorCount = 1;
@@ -233,13 +235,15 @@ int tgpu_kernel_create(TGPU* g, TGPUKernel* k, const char* path) {
     uint32_t* code = malloc((size_t)size);
     if (fread(code, 1, (size_t)size, f) != (size_t)size) { fclose(f); free(code); return 1; }
     fclose(f);
-    VkShaderModuleCreateInfo si = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    VkShaderModuleCreateInfo si = { 0 };
+    si.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     si.codeSize = (size_t)size;
     si.pCode = code;
     VkResult r = vkCreateShaderModule(g->device, &si, NULL, &k->module);
     free(code);
     if (r != VK_SUCCESS) { fprintf(stderr, "[tgpu] shader module failed for \"%s\"\n", path); return 1; }
-    VkComputePipelineCreateInfo pi = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    VkComputePipelineCreateInfo pi = { 0 };
+    pi.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     pi.layout = g->layout;
     pi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -303,14 +307,16 @@ int tgpu_download(TGPU* g, const TGPUBuffer* src, VkDeviceSize offset, void* dat
 
 void tgpu_begin(TGPU* g) {
     vkResetCommandBuffer(g->cmd, 0);
-    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    VkCommandBufferBeginInfo bi = { 0 };
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(g->cmd, &bi);
     g->recording = 1;
 }
 
 void tgpu_barrier(TGPU* g) {
-    VkMemoryBarrier mb = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    VkMemoryBarrier mb = { 0 };
+    mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
     mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT |
                        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
@@ -353,7 +359,8 @@ void tgpu_copy(TGPU* g, const TGPUBuffer* src, const TGPUBuffer* dst, VkDeviceSi
 int tgpu_submit(TGPU* g) {
     if (vkEndCommandBuffer(g->cmd) != VK_SUCCESS) { fprintf(stderr, "[tgpu] vkEndCommandBuffer failed\n"); return 1; }
     g->recording = 0;
-    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    VkSubmitInfo si = { 0 };
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     si.commandBufferCount = 1;
     si.pCommandBuffers = &g->cmd;
     VkResult r = vkQueueSubmit(g->queue, 1, &si, g->fence);
