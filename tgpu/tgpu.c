@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TG_CHECK(call, msg) do { VkResult _r = (call); if (_r != VK_SUCCESS) { fprintf(stderr, "[tgpu] %s (VkResult %d)\n", msg, (int)_r); return 1; } } while (0)
+#ifndef TGPU_ASSERT
+#define TGPU_ASSERT(call, msg) do { VkResult _r = (call); if (_r != VK_SUCCESS) { fprintf(stderr, "[tgpu] %s (VkResult %d)\n", msg, (int)_r); return 1; } } while (0)
+#endif
 
 static int find_memory(TGPU* g, uint32_t bits, VkMemoryPropertyFlags want, uint32_t* out) {
     for (uint32_t i = 0; i < g->memprops.memoryTypeCount; i++) {
@@ -15,11 +17,12 @@ static int find_memory(TGPU* g, uint32_t bits, VkMemoryPropertyFlags want, uint3
 static int create_raw_buffer(TGPU* g, TGPUBuffer* b, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props) {
     if (size == 0) size = 4;
     size = (size + 3) & ~(VkDeviceSize)3;
-    VkBufferCreateInfo bi = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    VkBufferCreateInfo bi = { 0 };
+    bi.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bi.size = size;
     bi.usage = usage;
     bi.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    TG_CHECK(vkCreateBuffer(g->device, &bi, NULL, &b->buffer), "vkCreateBuffer failed");
+    TGPU_ASSERT(vkCreateBuffer(g->device, &bi, NULL, &b->buffer), "vkCreateBuffer failed");
     VkMemoryRequirements req;
     vkGetBufferMemoryRequirements(g->device, b->buffer, &req);
     uint32_t type;
@@ -28,7 +31,8 @@ static int create_raw_buffer(TGPU* g, TGPUBuffer* b, VkDeviceSize size, VkBuffer
         vkDestroyBuffer(g->device, b->buffer, NULL);
         return 1;
     }
-    VkMemoryAllocateInfo ai = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    VkMemoryAllocateInfo ai = { 0 };
+    ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     ai.allocationSize = req.size;
     ai.memoryTypeIndex = type;
     VkResult r = vkAllocateMemory(g->device, &ai, NULL, &b->memory);
@@ -44,12 +48,14 @@ static int create_raw_buffer(TGPU* g, TGPUBuffer* b, VkDeviceSize size, VkBuffer
 
 int tgpu_create(TGPU* g, int preferred, int want_atomic_float) {
     memset(g, 0, sizeof(*g));
-    VkApplicationInfo app = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+    VkApplicationInfo app = { 0 };
+    app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app.pApplicationName = "prism-trainer";
     app.apiVersion = VK_API_VERSION_1_2;
-    VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+    VkInstanceCreateInfo ici = { 0 };
+    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     ici.pApplicationInfo = &app;
-    TG_CHECK(vkCreateInstance(&ici, NULL, &g->instance), "vkCreateInstance failed");
+    TGPU_ASSERT(vkCreateInstance(&ici, NULL, &g->instance), "vkCreateInstance failed");
 
     uint32_t count = 0;
     vkEnumeratePhysicalDevices(g->instance, &count, NULL);
@@ -95,26 +101,31 @@ int tgpu_create(TGPU* g, int preferred, int want_atomic_float) {
     int has_ext = 0;
     for (uint32_t i = 0; i < next; i++) if (strcmp(exts[i].extensionName, "VK_EXT_shader_atomic_float") == 0) has_ext = 1;
     free(exts);
-    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT af = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT };
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT af = { 0 };
+    af.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
     int use_atomic = 0;
     if (want_atomic_float && has_ext) {
-        VkPhysicalDeviceFeatures2 f2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+        VkPhysicalDeviceFeatures2 f2 = { 0 };
+        f2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         f2.pNext = &af;
         vkGetPhysicalDeviceFeatures2(g->gpu, &f2);
         use_atomic = af.shaderBufferFloat32AtomicAdd ? 1 : 0;
     }
-    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT afe = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT };
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT afe = { 0 };
+    afe.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
     afe.shaderBufferFloat32Atomics = VK_TRUE;
     afe.shaderBufferFloat32AtomicAdd = VK_TRUE;
     g->atomic_float_add = use_atomic;
 
     float prio = 1.0f;
-    VkDeviceQueueCreateInfo qi = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+    VkDeviceQueueCreateInfo qi = { 0 };
+    qi.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     qi.queueFamilyIndex = g->family;
     qi.queueCount = 1;
     qi.pQueuePriorities = &prio;
     const char* dev_exts[] = { "VK_EXT_shader_atomic_float" };
-    VkDeviceCreateInfo di = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    VkDeviceCreateInfo di = { 0 };
+    di.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     di.queueCreateInfoCount = 1;
     di.pQueueCreateInfos = &qi;
     if (use_atomic) {
@@ -122,48 +133,54 @@ int tgpu_create(TGPU* g, int preferred, int want_atomic_float) {
         di.enabledExtensionCount = 1;
         di.ppEnabledExtensionNames = dev_exts;
     }
-    TG_CHECK(vkCreateDevice(g->gpu, &di, NULL, &g->device), "vkCreateDevice failed");
+    TGPU_ASSERT(vkCreateDevice(g->gpu, &di, NULL, &g->device), "vkCreateDevice failed");
     vkGetDeviceQueue(g->device, g->family, 0, &g->queue);
 
-    VkCommandPoolCreateInfo cpi = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+    VkCommandPoolCreateInfo cpi = { 0 };
+    cpi.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cpi.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     cpi.queueFamilyIndex = g->family;
-    TG_CHECK(vkCreateCommandPool(g->device, &cpi, NULL, &g->pool), "vkCreateCommandPool failed");
-    VkCommandBufferAllocateInfo cbi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    TGPU_ASSERT(vkCreateCommandPool(g->device, &cpi, NULL, &g->pool), "vkCreateCommandPool failed");
+    VkCommandBufferAllocateInfo cbi = { 0 };
+    cbi.sTypee = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cbi.commandPool = g->pool;
     cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cbi.commandBufferCount = 1;
-    TG_CHECK(vkAllocateCommandBuffers(g->device, &cbi, &g->cmd), "vkAllocateCommandBuffers failed");
-    VkFenceCreateInfo fi = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-    TG_CHECK(vkCreateFence(g->device, &fi, NULL, &g->fence), "vkCreateFence failed");
+    TGPU_ASSERT(vkAllocateCommandBuffers(g->device, &cbi, &g->cmd), "vkAllocateCommandBuffers failed");
+    VkFenceCreateInfo fi = { 0 };
+    fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    TGPU_ASSERT(vkCreateFence(g->device, &fi, NULL, &g->fence), "vkCreateFence failed");
 
     VkDescriptorSetLayoutBinding binds[TGPU_MAX_BINDINGS];
     for (uint32_t i = 0; i < TGPU_MAX_BINDINGS; i++) {
         binds[i] = (VkDescriptorSetLayoutBinding){ i, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, NULL };
     }
-    VkDescriptorSetLayoutCreateInfo dli = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    VkDescriptorSetLayoutCreateInfo dli = { 0 };
+    dli.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     dli.bindingCount = TGPU_MAX_BINDINGS;
     dli.pBindings = binds;
-    TG_CHECK(vkCreateDescriptorSetLayout(g->device, &dli, NULL, &g->set_layout), "vkCreateDescriptorSetLayout failed");
+    TGPU_ASSERT(vkCreateDescriptorSetLayout(g->device, &dli, NULL, &g->set_layout), "vkCreateDescriptorSetLayout failed");
     VkDescriptorPoolSize ps = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, TGPU_MAX_BINDINGS };
-    VkDescriptorPoolCreateInfo dpi = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    VkDescriptorPoolCreateInfo dpi = { 0 };
+    dpi.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     dpi.maxSets = 1;
     dpi.poolSizeCount = 1;
     dpi.pPoolSizes = &ps;
-    TG_CHECK(vkCreateDescriptorPool(g->device, &dpi, NULL, &g->desc_pool), "vkCreateDescriptorPool failed");
+    TGPU_ASSERT(vkCreateDescriptorPool(g->device, &dpi, NULL, &g->desc_pool), "vkCreateDescriptorPool failed");
     VkDescriptorSetAllocateInfo dai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
     dai.descriptorPool = g->desc_pool;
     dai.descriptorSetCount = 1;
     dai.pSetLayouts = &g->set_layout;
-    TG_CHECK(vkAllocateDescriptorSets(g->device, &dai, &g->set), "vkAllocateDescriptorSets failed");
+    TGPU_ASSERT(vkAllocateDescriptorSets(g->device, &dai, &g->set), "vkAllocateDescriptorSets failed");
 
     VkPushConstantRange pr = { VK_SHADER_STAGE_COMPUTE_BIT, 0, TGPU_PUSH_SIZE };
-    VkPipelineLayoutCreateInfo pli = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    VkPipelineLayoutCreateInfo pli = { 0 };
+    pli.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pli.setLayoutCount = 1;
     pli.pSetLayouts = &g->set_layout;
     pli.pushConstantRangeCount = 1;
     pli.pPushConstantRanges = &pr;
-    TG_CHECK(vkCreatePipelineLayout(g->device, &pli, NULL, &g->layout), "vkCreatePipelineLayout failed");
+    TGPU_ASSERT(vkCreatePipelineLayout(g->device, &pli, NULL, &g->layout), "vkCreatePipelineLayout failed");
     return 0;
 }
 
@@ -246,7 +263,7 @@ static int ensure_staging(TGPU* g, VkDeviceSize size) {
     if (create_raw_buffer(g, &g->staging, want,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) return 1;
-    TG_CHECK(vkMapMemory(g->device, g->staging.memory, 0, VK_WHOLE_SIZE, 0, &g->staging_mapped), "vkMapMemory failed");
+    TGPU_ASSERT(vkMapMemory(g->device, g->staging.memory, 0, VK_WHOLE_SIZE, 0, &g->staging_mapped), "vkMapMemory failed");
     return 0;
 }
 
