@@ -1,0 +1,4 @@
+INCLUDE include
+SOURCE include
+MODULE imgui https://github.com/JHeflinger/minis.git imgui
+MODULE raylib https://github.com/JHeflinger/minis.git raylib
