@@ -15,3 +15,7 @@ WINDOWS LINK ws2_32
 WINDOWS LINK ole32
 WINDOWS LINK uuid
 WINDOWS LINK :win_x64_libraylib.a
+MACOS LINK :macos_arm64_libraylib.a
+MACOS FRAMEWORK CoreVideo
+MACOS FRAMEWORK CoreAudio
+MACOS FRAMEWORK AudioToolbox
